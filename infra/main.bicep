@@ -1,5 +1,5 @@
 @description('The location used for all resources')
-param location string = resourceGroup().location
+param location string = 'germanywestcentral'
 
 @description('Name used for the deployment environment')
 param environmentName string
@@ -34,7 +34,7 @@ param appServiceName string = 'app-${resourceToken}'
   'P2v2'
   'P3v2'
 ])
-param appServicePlanSku string = 'S1'
+param appServicePlanSku string = 'B1'
 
 // Create App Service Plan
 resource appServicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
@@ -210,7 +210,7 @@ param searchServiceName string = 'srch-${resourceToken}'
   'standard2'
   'standard3'
 ])
-param searchServiceSku string = 'standard'
+param searchServiceSku string = 'basic'
 
 @description('Search index name')
 param searchIndexName string = 'index-name'

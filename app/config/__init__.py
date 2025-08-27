@@ -38,6 +38,7 @@ class AppSettings(BaseSettings):
     # Azure AI Search Settings
     azure_search_service_url: str = Field(..., env="AZURE_SEARCH_SERVICE_URL")
     azure_search_index_name: str = Field(..., env="AZURE_SEARCH_INDEX_NAME")
+    azure_search_service_sku: str = Field("basic", env="AZURE_SEARCH_SERVICE_SKU")
     
     # Other settings
     system_prompt: str = Field(

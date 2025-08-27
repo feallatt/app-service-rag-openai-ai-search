@@ -34,6 +34,51 @@ The application requires the following Azure resources:
 
 ## Get started
 
+### Environment Setup
+
+To create a conda environment for this project:
+
+```bash
+# Create a new conda environment
+conda create -n cube-rag-service python=3.11
+
+# Activate the environment
+conda activate cube-rag-service
+
+# Install dependencies (if requirements.txt exists)
+pip install -r requirements.txt
+```
+
+#### Install Azure Developer CLI (azd)
+
+For macOS:
+```bash
+# Using Homebrew
+brew install azure-dev
+
+# Or using curl
+curl -fsSL https://aka.ms/install-azd.sh | bash
+```
+
+For Windows:
+```bash
+# Using winget
+winget install Microsoft.AzureDeveloperCLI
+
+# Or using PowerShell
+powershell -ex AllSigned -c "Invoke-RestMethod 'https://aka.ms/install-azd.ps1' | Invoke-Expression"
+```
+
+For Linux:
+```bash
+curl -fsSL https://aka.ms/install-azd.sh | bash
+```
+
+After installation, authenticate with Azure:
+```bash
+azd auth login
+```
+
 See [Tutorial: Build a Retrieval Augmented Generation with Azure OpenAI and Azure AI Search (FastAPI)](https://learn.microsoft.com/azure/app-service/tutorial-ai-openai-search-python).
 
 ## Role Assignments
@@ -51,4 +96,6 @@ The following RBAC role assignments are needed to enable secure service-to-servi
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+make sure you set your environment varoables for germanywestcentral
+# azd env set AZURE_LOCATION germanywestcentral
+
