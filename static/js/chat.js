@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const assistantMessageTemplate = document.getElementById('assistant-message-template');
     
     // Quick response buttons
-    const btnPersonalInfo = document.getElementById('btn-personal-info');
+    const btnMyBike = document.getElementById('btn-my-bike');
     const btnWarranty = document.getElementById('btn-warranty');
     const btnCompany = document.getElementById('btn-company');
     
@@ -46,10 +46,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Event listeners
     chatForm.addEventListener('submit', handleChatSubmit);
     chatInput.addEventListener('keydown', handleKeyDown);
-    btnPersonalInfo.addEventListener('click', () => sendQuickQuestion("What does Contoso do with my personal information?"));
-    btnWarranty.addEventListener('click', () => sendQuickQuestion("How do I file a warranty claim?"));
-    btnCompany.addEventListener('click', () => sendQuickQuestion("Tell me about your company."));
-    
+    btnMyBike.addEventListener('click', () => sendQuickQuestion("Welches Fahrrad ist perfekt für mich?"));
+    btnWarranty.addEventListener('click', () => sendQuickQuestion("Welche Garantie gibt es auf mein CUBE Fahrrad?"));
+    btnCompany.addEventListener('click', () => sendQuickQuestion("Erzähle mir etwas über CUBE."));
+
     /**
      * Handles form submission when the user sends a message
      */
@@ -100,11 +100,13 @@ document.addEventListener('DOMContentLoaded', function() {
             chatHistory.innerHTML = '';
         }
         
-        const messageNode = userMessageTemplate.content.cloneNode(true);
-        const messageContent = messageNode.querySelector('.message-content');
-        messageContent.innerHTML = text.replace(/\n/g, '<br>');
-        chatHistory.appendChild(messageNode);
-        scrollToBottom();
+        const userMessage = userMessageTemplate.content.cloneNode(true);
+        const messageContent = userMessage.querySelector('.message-content');
+        if (messageContent) {
+            messageContent.innerHTML = renderMarkdown(text);
+        }
+        chatHistory.appendChild(userMessage);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
     }
     
     /**
@@ -157,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
             
-            messageContent.innerHTML = formattedContent.replace(/\n/g, '<br>');
+            messageContent.innerHTML = renderMarkdown(formattedContent);
             
             // Store the message citations as a data attribute
             messageDiv.setAttribute('data-citations', JSON.stringify(messageCitations));
@@ -189,7 +191,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         chatHistory.appendChild(messageNode);
-        scrollToBottom();
+        chatContainer.scrollTop = chatContainer.scrollHeight;
     }
     
     /**
@@ -276,7 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function showLoading() {
         loadingIndicator.classList.remove('d-none');
         sendButton.disabled = true;
-        btnPersonalInfo.disabled = true;
+        btnMyBike.disabled = true;
         btnWarranty.disabled = true;
         btnCompany.disabled = true;
     }
@@ -287,7 +289,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function hideLoading() {
         loadingIndicator.classList.add('d-none');
         sendButton.disabled = false;
-        btnPersonalInfo.disabled = false;
+        btnMyBike.disabled = false;
         btnWarranty.disabled = false;
         btnCompany.disabled = false;
     }
@@ -390,5 +392,21 @@ document.addEventListener('DOMContentLoaded', function() {
             showError(`Error: ${error.message}`);
             console.error('Error:', error);
         });
+    }
+    
+    // Add a Markdown renderer (using marked.js CDN)
+    if (!window.marked) {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
+        script.onload = () => console.log('marked.js loaded');
+        document.head.appendChild(script);
+    }
+    
+    // Helper to render Markdown to HTML
+    function renderMarkdown(text) {
+        if (window.marked) {
+            return window.marked.parse(text);
+        }
+        return text;
     }
 });

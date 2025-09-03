@@ -1,29 +1,41 @@
 /* Main app styles */
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     height: 100%;
     margin: 0;
     padding: 0;
-    background-color: #f5f5f5;
+    background-color: #f8f9fa;
+    overflow: hidden; /* Prevent double scrollbars */
 }
 
 /* Card styles for chat messages */
 .user-card {
     border-radius: 1rem 1rem 0.25rem 1rem;
-    background-color: #E3F2FD;
+    background-color: rgb(123,156,145) !important;
     border: none;
+    transition: all 0.2s ease;
+    color: white !important;
+}
+
+.user-card .card-body {
+    color: white !important;
 }
 
 .assistant-card {
     border-radius: 1rem 1rem 1rem 0.25rem;
-    background-color: #E8F5E9;
-    border: none;
+    background-color: #f8f9fa;
+    border: 1px solid #eaeaea;
+    transition: all 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
 }
 
 /* Avatar badges */
 .avatar-badge {
-    width: 2rem;
-    height: 2rem;
+    width: 2.5rem;
+    height: 2.5rem;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -31,14 +43,18 @@ html, body {
     font-weight: bold;
     font-size: 0.75rem;
     color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .user-avatar-badge {
-    background-color: #1976D2;
+    background-color: white !important;
+    color: black !important;
+    border: 1px solid #ccc;
 }
 
 .assistant-avatar-badge {
-    background-color: #2E7D32;
+    background-color: #333;
+    font-size: 0.7rem;
 }
 
 /* Loading indicator - simplified but keeping essential animation */
@@ -53,7 +69,7 @@ html, body {
     height: 0.5rem;
     width: 0.5rem;
     margin: 0 0.125rem;
-    background-color: #6c757d;
+    background-color: #333;
     border-radius: 50%;
     display: inline-block;
     animation: bounce 1.4s infinite ease-in-out both;
@@ -72,6 +88,65 @@ html, body {
     40% { transform: scale(1.0); opacity: 1; }
 }
 
+/* Add custom styles for CUBE bike theme */
+.btn-outline-dark {
+    border-width: 1.5px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-outline-dark:hover {
+    background-color: #000;
+    color: white;
+    transform: translateY(-1px);
+}
+
+.btn-dark {
+    background-color: #000;
+    border-color: #000;
+    transition: all 0.2s ease;
+}
+
+.btn-dark:hover {
+    background-color: #333;
+    transform: translateY(-1px);
+}
+
+#chat-input {
+    border: 1px solid #dee2e6;
+    transition: all 0.2s ease;
+}
+
+#chat-input:focus {
+    border-color: #000;
+    box-shadow: 0 0 0 0.25rem rgba(0, 0, 0, 0.1);
+}
+
+/* Style for specific bike chat features */
+.bike-spec {
+    background-color: #f0f0f0;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+.bike-spec-header {
+    font-weight: bold;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Citation badge styles */
+.badge.bg-primary {
+    background-color: rgb(123,156,145) !important;
+    color: white !important;
+}
+
+.badge.bg-primary:hover {
+    background-color: rgb(100,130,120) !important;
+}
+
 /* Citation overlay and modal styles */
 .citation-overlay {
     position: fixed;
@@ -87,7 +162,8 @@ html, body {
 }
 
 .citation-modal {
-    background-color: #fff;
+    background-color: rgb(123,156,145);
+    color: white;
     border-radius: 0.5rem;
     max-width: 700px;
     width: 90%;
@@ -100,7 +176,7 @@ html, body {
 
 .citation-modal-header {
     padding: 1rem;
-    border-bottom: 1px solid #dee2e6;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
     display: flex;
     justify-content: space-between;
     align-items: center;

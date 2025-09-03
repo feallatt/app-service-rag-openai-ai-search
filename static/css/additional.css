@@ -1,0 +1,32 @@
+#error-container {
+    margin-bottom: 15px;
+    border-radius: 8px;
+}
+
+/* Add responsive adjustments */
+@media (max-width: 768px) {
+    .card {
+        max-width: 90% !important;
+    }
+    
+    .avatar-badge {
+        width: 2rem;
+        height: 2rem;
+        font-size: 0.7rem;
+    }
+    
+    .container {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+}
+
+/* Add smooth animations for message appearance */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.d-flex.mb-4 {
+    animation: fadeIn 0.3s ease-in-out;
+}
