@@ -69,9 +69,23 @@ async def chat_completion(chat_request: ChatRequest):
             raise HTTPException(status_code=400, detail="Messages cannot be empty")
         
         # Get chat completion from RAG service
-        response = await rag_chat_service.get_chat_completion(chat_request.messages)
+        openai_response = await rag_chat_service.get_chat_completion(chat_request.messages)
         
-        return response
+        # Extract response content and citations
+        response_content = openai_response.choices[0].message.content
+        citations = []
+        
+        # Extract citations from the context if available
+        if (hasattr(openai_response.choices[0].message, 'context') and 
+            openai_response.choices[0].message.context and 
+            'citations' in openai_response.choices[0].message.context):
+            citations = openai_response.choices[0].message.context['citations']
+        
+        # Return formatted response for frontend
+        return {
+            "response": response_content,
+            "citations": citations
+        }
         
     except Exception as e:
         error_str = str(e).lower()
@@ -80,22 +94,14 @@ async def chat_completion(chat_request: ChatRequest):
         # Handle specific error types with friendly messages
         if "rate limit" in error_str or "capacity" in error_str or "quota" in error_str:
             return {
-                "choices": [{
-                    "message": {
-                        "role": "assistant",
-                        "content": "The AI service is currently experiencing high demand. Please wait a moment and try again."
-                    }
-                }]
+                "response": "The AI service is currently experiencing high demand. Please wait a moment and try again.",
+                "citations": []
             }
         else:
             # Return a standard error response for all other errors
             return {
-                "choices": [{
-                    "message": {
-                        "role": "assistant",
-                        "content": f"An error occurred: {str(e)}"
-                    }
-                }]
+                "response": f"An error occurred: {str(e)}",
+                "citations": []
             }
 
 

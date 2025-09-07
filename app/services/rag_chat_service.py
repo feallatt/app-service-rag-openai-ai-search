@@ -5,10 +5,12 @@ This module implements a Retrieval Augmented Generation (RAG) service that conne
 Azure OpenAI with Azure AI Search. RAG enhances LLM responses by grounding them in
 your enterprise data stored in Azure AI Search.
 """
+import asyncio
 import logging
 from typing import List
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from openai import AsyncAzureOpenAI
+from openai import RateLimitError
 from app.models.chat_models import ChatMessage
 from app.config import settings
 
@@ -54,15 +56,93 @@ class RagChatService:
         
         logger.info("RagChatService initialized with environment variables")
     
+    def _fibonacci_sequence(self, n: int) -> int:
+        """Generate nth Fibonacci number for retry delays"""
+        if n <= 1:
+            return n
+        a, b = 0, 1
+        for _ in range(2, n + 1):
+            a, b = b, a + b
+        return b
+    
+    async def _retry_with_fibonacci_backoff(self, func, *args, max_retries: int = 5, **kwargs):
+        """
+        Retry a function with Fibonacci backoff on 429 errors
+        
+        Args:
+            func: The async function to retry
+            *args: Arguments to pass to the function
+            max_retries: Maximum number of retry attempts
+            **kwargs: Keyword arguments to pass to the function
+            
+        Returns:
+            Result of the function call
+        """
+        last_exception = None
+        
+        for attempt in range(max_retries + 1):
+            try:
+                return await func(*args, **kwargs)
+            except RateLimitError as e:
+                last_exception = e
+                if attempt == max_retries:
+                    logger.error(f"Max retries ({max_retries}) exceeded for rate limit error: {e}")
+                    raise
+                
+                # Calculate Fibonacci delay (in seconds)
+                delay = self._fibonacci_sequence(attempt + 1)
+                logger.warning(f"Rate limit hit (429), retrying in {delay} seconds (attempt {attempt + 1}/{max_retries})")
+                await asyncio.sleep(delay)
+            except Exception as e:
+                # Don't retry on non-rate-limit errors
+                logger.error(f"Non-retryable error occurred: {e}")
+                raise
+        
+        # This should never be reached, but just in case
+        if last_exception:
+            raise last_exception
+    
+    def _normalize_query(self, query: str) -> str:
+        """
+        Normalize user queries to improve search consistency while keeping German terms
+        
+        Args:
+            query: Original user query
+            
+        Returns:
+            Normalized query with consistent German bike terminology
+        """
+        normalized = query.lower().strip()
+        
+        # Standardize common German bike type variations (keeping German)
+        bike_type_mappings = {
+            'downhillbike': 'downhill bike',
+            'downhill-bike': 'downhill bike', 
+            'dh-bike': 'downhill bike',
+            'mountainbike': 'mountainbike',
+            'mountain-bike': 'mountainbike',
+            'mtb': 'mountainbike',
+            'e-rad': 'e-bike',
+            'elektrofahrrad': 'e-bike',
+            'ebike': 'e-bike'
+        }
+        
+        # Apply mappings for consistency
+        for original, standardized in bike_type_mappings.items():
+            normalized = normalized.replace(original, standardized)
+        
+        return normalized
+
     async def get_chat_completion(self, history: List[ChatMessage]):
         """
         Process a chat completion request with RAG capabilities by integrating with Azure AI Search
         
         This method:
         1. Formats the conversation history for Azure OpenAI
-        2. Configures Azure AI Search as a data source using the "On Your Data" pattern
-        3. Sends the request to Azure OpenAI with data_sources parameter
-        4. Returns the response with citations to source documents
+        2. Normalizes queries for better search consistency
+        3. Configures Azure AI Search as a data source using the "On Your Data" pattern
+        4. Uses enhanced system prompts for better responses
+        5. Returns the response with citations to source documents
         
         Args:
             history: List of chat messages from the conversation history
@@ -71,16 +151,46 @@ class RagChatService:
             Raw response from the OpenAI API with citations from Azure AI Search
         """
         try:
+            # Normalize the latest user query for better search consistency
+            if history and history[-1].role == "user":
+                normalized_query = self._normalize_query(history[-1].content)
+                # Create a copy of history with normalized query
+                normalized_history = history[:-1] + [ChatMessage(role="user", content=normalized_query)]
+            else:
+                normalized_history = history
+
+            # enhance the system prompt for the first user message
+            is_first_prompt = not any(msg.role == "assistant" for msg in normalized_history)
+            if is_first_prompt:
+                additional_system_prompt = "5 wichtige Fragen für einen Fahrradverkäufer: 1. Geschlecht, 2. Untergrund auf dem gefahren werden soll, 3. Budget, 4. Verwendungszweck, 5. Körpergröße des Fahrers\n\n"
+                additional_system_prompt += "Antworte immer in Deutsch.\n\n"
+                additional_system_prompt += "Schlage keine Fahrräder vor, wenn du noch nichts über den Benutzer weißt.\n\n"
+                additional_system_prompt += "WICHTIG: Durchsuche ALLE verfügbaren Dokumente gründlich, bevor du sagst, dass ein bestimmter Fahrradtyp nicht verfügbar ist. Achte auf verschiedene Bezeichnungen und Beschreibungen für den gleichen Fahrradtyp.\n\n"
+
+
             # Limit chat history to the 20 most recent messages to prevent token limit issues
-            recent_history = history[-20:] if len(history) > 20 else history
+            recent_history = normalized_history[-10:] if len(normalized_history) > 10 else normalized_history
             
             # Convert to Azure OpenAI compatible message format
             messages = []
             
-            # Add system message
+            # Enhanced system message with better instructions for consistency
+            enhanced_system_prompt = self.system_prompt
+            if is_first_prompt:
+                enhanced_system_prompt += additional_system_prompt
+            
+            # Add additional consistency instructions (generic, no hardcoded models)
+            enhanced_system_prompt += "\nWICHTIGE ANWEISUNGEN FÜR KONSISTENZ:\n"
+            enhanced_system_prompt += "- Durchsuche ALLE verfügbaren Dokumente gründlich bevor du sagst, dass etwas nicht verfügbar ist\n"
+            enhanced_system_prompt += "- Achte auf Beschreibungen in den Dokumenten die Fahrradtypen charakterisieren (z.B. 'Downhill-Geschoss', 'Trail-Bike', etc.)\n"
+            enhanced_system_prompt += "- Wenn ein Kunde nach einem spezifischen Fahrradtyp fragt, prüfe sowohl die Kategorie als auch die Beschreibung der Fahrräder\n"
+            enhanced_system_prompt += "- Sei konsistent - wenn CUBE einen Fahrradtyp anbietet, sage das direkt\n"
+            enhanced_system_prompt += "- Nutze immer die verfügbaren Dokumente als Quelle für deine Empfehlungen\n"
+            enhanced_system_prompt += "- Bei unklaren Anfragen, frage nach den wichtigen Kriterien (Budget, Einsatzbereich, etc.)\n"
+            
             messages.append({
-                "role": "system", 
-                "content": self.system_prompt
+                "role": "system",
+                "content": enhanced_system_prompt
             })
             
             # Add conversation history
@@ -90,7 +200,7 @@ class RagChatService:
                     "content": msg.content
                 })
             
-            # Configure Azure AI Search data source according to the "On Your Data" pattern
+            # Configure Azure AI Search data source with optimized parameters for better retrieval
             # This connects Azure OpenAI directly to your search index without needing to
             # manually implement vector search, chunking, or semantic rankers
             data_source = {
@@ -101,7 +211,7 @@ class RagChatService:
                     "authentication": {
                         "type": "system_assigned_managed_identity"
                     },
-                    # Combines vector and traditional search
+                    # Combines vector and traditional search with semantic ranking for best results
                     "query_type": "vector_semantic_hybrid",
                     # The naming pattern for semantic configuration is generated by Azure AI Search 
                     # during integrated vectorization and cannot be customized
@@ -109,22 +219,46 @@ class RagChatService:
                     "embedding_dependency": {
                         "type": "deployment_name",
                         "deployment_name": self.embedding_deployment
-                    }
+                    },
+                    # Increase top_n_documents for better retrieval coverage of all bike types
+                    "top_n_documents": 5,
+                    # Use moderate strictness for good balance between accuracy and coverage
+                    "strictness": 2
                 }
             }
             
             # Call Azure OpenAI for completion with the data_sources parameter directly
             # The data_sources parameter enables the "On Your Data" pattern, where
             # Azure OpenAI automatically retrieves relevant documents from your search index
-            response = await self.openai_client.chat.completions.create(
+            
+            logger.info(messages)
+            
+            if history and history[-1].role == "user" and normalized_history:
+                logger.info(f"Normalized query: {normalized_history[-1].content}")
+
+            
+            # Use Fibonacci retry for rate limit handling with enhanced parameters
+            response = await self._retry_with_fibonacci_backoff(
+                self.openai_client.chat.completions.create,
                 model=self.gpt_deployment,
                 messages=messages,
                 extra_body={
                     "data_sources": [data_source]
                 },
-                stream=False
+                stream=False,
+                temperature=0.3,  # Lower temperature for more consistent responses
+                max_tokens=1500   # Reasonable limit for responses
             )
+            logger.info(f"OpenAI response: {response}")
             
+            # Log citation count for debugging consistency issues
+            if hasattr(response.choices[0].message, 'context') and response.choices[0].message.context:
+                citations = response.choices[0].message.context.get('citations', [])
+                logger.info(f"Retrieved {len(citations)} citations")
+                # Log first few citation titles for debugging
+                for i, citation in enumerate(citations[:3]):
+                    logger.info(f"Citation {i+1}: {citation.get('title', 'No title')}")
+
             # Return the raw response
             return response
             
