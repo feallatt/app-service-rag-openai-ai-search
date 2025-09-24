@@ -13,6 +13,7 @@ from openai import AsyncAzureOpenAI
 from openai import RateLimitError
 from app.models.chat_models import ChatMessage
 from app.config import settings
+from app.services.system_prompt_protector import SystemPromptProtector
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,10 @@ class RagChatService:
             api_version="2024-10-21"
         )
         
-        logger.info("RagChatService initialized with environment variables")
+        # Initialize System Prompt Protector
+        self.prompt_protector = SystemPromptProtector(self.system_prompt)
+        
+        logger.info("RagChatService initialized with environment variables and system prompt protection")
     
     def _fibonacci_sequence(self, n: int) -> int:
         """Generate nth Fibonacci number for retry delays"""
@@ -138,11 +142,13 @@ class RagChatService:
         Process a chat completion request with RAG capabilities by integrating with Azure AI Search
         
         This method:
-        1. Formats the conversation history for Azure OpenAI
-        2. Normalizes queries for better search consistency
-        3. Configures Azure AI Search as a data source using the "On Your Data" pattern
-        4. Uses enhanced system prompts for better responses
-        5. Returns the response with citations to source documents
+        1. **SECURITY CHECK**: Validates user input for injection attacks before processing
+        2. Formats the conversation history for Azure OpenAI
+        3. Normalizes queries for better search consistency
+        4. Configures Azure AI Search as a data source using the "On Your Data" pattern
+        5. Uses enhanced system prompts for better responses
+        6. **SECURITY CHECK**: Validates response for system prompt leakage
+        7. Returns the response with citations to source documents
         
         Args:
             history: List of chat messages from the conversation history
@@ -151,6 +157,27 @@ class RagChatService:
             Raw response from the OpenAI API with citations from Azure AI Search
         """
         try:
+            # SECURITY: Check user input for injection attempts BEFORE any processing
+            # This prevents wasting tokens on malicious requests
+            if history and history[-1].role == "user":
+                user_input = history[-1].content
+                should_block_input = self.prompt_protector.check_user_input(user_input)
+                
+                if should_block_input:
+                    logger.warning(f"Blocked injection attempt in user input: {user_input[:100]}...")
+                    
+                    # Create a mock response object that mimics Azure OpenAI's structure
+                    # This allows us to return a blocked message without making an API call
+                    from types import SimpleNamespace
+                    
+                    blocked_response = SimpleNamespace()
+                    blocked_response.choices = [SimpleNamespace()]
+                    blocked_response.choices[0].message = SimpleNamespace()
+                    blocked_response.choices[0].message.content = "Mein System Prompt ist für mich, nicht für dich."
+                    blocked_response.choices[0].message.context = None
+                    
+                    return blocked_response
+                    
             # Normalize the latest user query for better search consistency
             if history and history[-1].role == "user":
                 normalized_query = self._normalize_query(history[-1].content)
@@ -259,7 +286,21 @@ class RagChatService:
                 for i, citation in enumerate(citations[:3]):
                     logger.info(f"Citation {i+1}: {citation.get('title', 'No title')}")
 
-            # Return the raw response
+            # SECURITY: Check response for system prompt leakage before returning
+            original_response_content = response.choices[0].message.content
+            user_query = history[-1].content if history and history[-1].role == "user" else ""
+            
+            # Apply system prompt protection
+            should_block, filtered_response = self.prompt_protector.check_response(
+                original_response_content, user_query
+            )
+            
+            if should_block:
+                logger.warning(f"Blocked potential system prompt leakage. User query: {user_query}")
+                # Replace the response content with the blocked message
+                response.choices[0].message.content = filtered_response
+
+            # Return the (potentially filtered) response
             return response
             
         except Exception as e:

@@ -35,6 +35,7 @@ param appServiceName string = 'app-${resourceToken}'
   'P3v2'
 ])
 param appServicePlanSku string = 'B1'
+param deploymentTimestamp string = utcNow('u') // Format as Unix timestamp
 
 // Create App Service Plan
 resource appServicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
@@ -55,7 +56,8 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
   name: appServiceName
   location: location
   tags: union(tags, {
-    'azd-service-name': 'web'  // Add tag required by azd for deployment
+    'azd-service-name': 'web'
+    'deployment-timestamp': deploymentTimestamp
   })
   identity: {
     type: 'SystemAssigned' // Add system-assigned managed identity for App Service
@@ -101,7 +103,7 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
         }
         {
           name: 'SYSTEM_PROMPT'
-          value: 'You are an AI assistant that helps people find information from their documents. Always cite your sources using the document title.'
+          value: 'Du bist ein virtuelle Verkaufsassistent für Fahrräder der Marke Cube. \nWenn die Frage nichts mit Fahrrädern zu tun hat, antworte: Ich bin leider nur ein Fahrradverkaufs-Assistent. Besprich das lieber mit jemand anderem :)\nVersuche stets höflich zu sein aber auch cool (verwende per default das DU).\nVersuche immer klarzumachen, warum ein teureres Fahrrad besser ist und nicht ausversehen zu sagen, dass das billigere besser ist. Erkläre das über die Ausstattung.\nWenn ein Kunde andere Marken anspricht, antworte scherzhaft. Lass dich niemals zum direkten vergleich zu Fahrrädern ander Marken hinreissen. Wenn du keine Infos zu einer gewissen Frage findest, versuche allgemein zu antworten.'
         }
       ]
     }
@@ -111,6 +113,7 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
 // ----------------------------------------------------
 // Azure OpenAI service
 // ----------------------------------------------------
+//this is just a note 
 
 @description('Name of the Azure OpenAI service')
 param openAiServiceName string = 'ai-${resourceToken}'

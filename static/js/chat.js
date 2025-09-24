@@ -9,7 +9,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const chatInput = document.getElementById('chat-input');
     const sendButton = document.getElementById('send-button');
     const chatHistory = document.getElementById('chat-history');
-    const chatContainer = document.getElementById('chat-container');
+    const chatContainer = document.getElementById('chat-container'); // äußerer Container
+    const chatScroll = document.getElementById('chat-scroll'); // neuer innerer Scrollbereich
     const loadingIndicator = document.getElementById('loading-indicator');
     const errorContainer = document.getElementById('error-container');
     const errorMessage = document.getElementById('error-message');
@@ -24,6 +25,43 @@ document.addEventListener('DOMContentLoaded', function() {
     const btnWarranty = document.getElementById('btn-warranty');
     const btnCompany = document.getElementById('btn-company');
     const btnGuidedSelection = document.getElementById('btn-guided-selection');
+
+    // Privacy Consent Elements
+    const privacyOverlay = document.getElementById('privacy-consent-overlay');
+    const privacyCheckbox = document.getElementById('privacy-consent-checkbox');
+    const privacyAcceptBtn = document.getElementById('privacy-consent-accept');
+
+    // Consent key (increment version if text changes)
+    const CONSENT_KEY = 'privacyConsentV2'; // Version erhöht damit Overlay erneut erscheint
+    const consentGiven = localStorage.getItem(CONSENT_KEY) === 'true';
+
+    // WARTUNGSHINWEIS:
+    // Wenn sich der rechtliche Inhalt des Datenschutzhinweises ändert,
+    // bitte CONSENT_KEY auf privacyConsentV2 (oder höher) erhöhen,
+    // damit Nutzer den Hinweis erneut bestätigen müssen.
+
+    // Initial consent check
+    if (!consentGiven && privacyOverlay) {
+        privacyOverlay.classList.remove('d-none');
+        document.body.classList.add('no-scroll');
+        if (chatInput) chatInput.disabled = true;
+        if (sendButton) sendButton.disabled = true;
+    }
+
+    // Handle checkbox enable button
+    if (privacyCheckbox && privacyAcceptBtn) {
+        privacyCheckbox.addEventListener('change', () => {
+            privacyAcceptBtn.disabled = !privacyCheckbox.checked;
+        });
+        privacyAcceptBtn.addEventListener('click', () => {
+            localStorage.setItem(CONSENT_KEY, 'true');
+            privacyOverlay.classList.add('d-none');
+            document.body.classList.remove('no-scroll');
+            if (chatInput) chatInput.disabled = false;
+            if (sendButton) sendButton.disabled = false;
+            chatInput?.focus();
+        });
+    }
     
     // Chat history array
     let messages = [];
@@ -102,6 +140,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function handleChatSubmit(e) {
+        // Block submission if consent missing
+        if (!localStorage.getItem(CONSENT_KEY)) {
+            if (privacyOverlay) {
+                privacyOverlay.classList.remove('d-none');
+                document.body.classList.add('no-scroll');
+            }
+            return;
+        }
         e.preventDefault();
         const query = chatInput.value.trim();
         if (query && !isLoading()) {
@@ -112,9 +158,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function handleKeyDown(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            if (!isLoading()) {
-                handleChatSubmit(e);
-            }
+            if (!isLoading()) handleChatSubmit(e);
         }
     }
 
@@ -299,10 +343,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function scrollToBottom() {
-        setTimeout(() => {
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }, 100);
+    function scrollToBottom(force = true) {
+        // Immer nach unten scrollen (kann mit force=false deaktiviert werden)
+        const target = chatScroll || chatContainer;
+        if (force) {
+            // Doppelt sicherstellen: sowohl sofort als auch nach Animation-Frame
+            target.scrollTop = target.scrollHeight;
+            requestAnimationFrame(() => {
+                target.scrollTop = target.scrollHeight;
+            });
+        }
     }
 
     // Decision Tree Modal Functions

@@ -30,3 +30,106 @@
 .d-flex.mb-4 {
     animation: fadeIn 0.3s ease-in-out;
 }
+
+/* Kompaktere Nachrichten: kleinere Zeilenabstände */
+.message-content {
+    line-height: 1.3 !important;
+}
+
+.message-content br + br {
+    /* Doppelte Zeilunumbrüche (Absätze) weniger Abstand */
+    line-height: 0.8;
+}
+
+/* Beta Banner (Post-It Style) */
+/* Vollbreiter Beta Banner */
+.beta-top-banner { background: linear-gradient(90deg,#fffbe6,#ffe063,#ffcf2b); border-bottom:1px solid #d4b12a; font-size:.8rem; line-height:1.2rem; color:#473a05; box-shadow:0 2px 4px rgba(0,0,0,0.08); z-index:1040; }
+.beta-top-banner strong { font-family:'Bebas Neue',sans-serif; letter-spacing:1px; font-size:.9rem; color:#2d2500; }
+.beta-top-banner .container-fluid { max-width:1400px; }
+
+/* KRITISCH: Feste Höhen für korrektes Layout! */
+html, body { 
+    height: 100%; 
+    margin: 0; 
+    padding: 0; 
+    overflow: hidden; /* Verhindert dass der gesamte Body scrollt */
+}
+
+/* App Root: MUSS exakt 100% Höhe haben, nicht min-height! */
+.app-root { 
+    height: 100vh; 
+    height: 100dvh; /* moderne Browser */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Chat Container: MUSS schrumpfen können */
+#chat-container { 
+    flex: 1; 
+    min-height: 0; /* KRITISCH für Flex-Shrinking */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Scroll-Bereich: MUSS schrumpfen und scrollbar sein */
+#chat-scroll { 
+    flex: 1; 
+    min-height: 0; /* KRITISCH für Flex-Shrinking */
+    overflow-y: auto; 
+    overscroll-behavior: contain; 
+}
+
+/* Leichtes Fade oben/unten optional für Scroll-Bereich (erstmal deaktiviert) */
+/*
+#chat-scroll::after, #chat-scroll::before {
+    content: "";
+    position: sticky;
+    left: 0; right:0;
+    height: 16px;
+    pointer-events: none;
+    z-index: 2;
+}
+#chat-scroll::before { top: 0; background: linear-gradient(to bottom, rgba(248,249,250,1), rgba(248,249,250,0)); }
+#chat-scroll::after { bottom: 0; background: linear-gradient(to top, rgba(248,249,250,1), rgba(248,249,250,0)); }
+*/
+/* BODY Scroll Lock wenn Overlay aktiv */
+body.no-scroll { overflow:hidden; }
+
+/* Privacy Consent Overlay */
+.privacy-consent-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(3px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    padding: 1rem;
+}
+.privacy-consent-modal {
+    background: #ffffff;
+    max-width: 480px;
+    width: 100%;
+    border-radius: 1rem;
+    padding: 1.75rem 1.75rem 1.5rem;
+    box-shadow: 0 12px 40px -6px rgba(0,0,0,0.3);
+    position: relative;
+    animation: consentFade 0.35s ease;
+}
+@keyframes consentFade {
+    from { opacity:0; transform: translateY(12px) scale(.98); }
+    to { opacity:1; transform: translateY(0) scale(1); }
+}
+.privacy-consent-modal h5 { font-weight:600; letter-spacing:.5px; }
+.privacy-consent-modal p { font-size: .85rem; }
+.privacy-consent-modal .form-check-label { font-size: .8rem; line-height:1.2rem; }
+.privacy-consent-modal button[disabled] { opacity:.55; cursor:not-allowed; }
+/* Starker Fokus Rahmen für Accessibility */
+.privacy-consent-modal button:focus, .privacy-consent-modal input:focus { outline:2px solid #000; outline-offset:2px; }
+
+@media (max-width: 600px) {
+    .beta-banner { right: 0.5rem; top: 0.5rem; transform: rotate(1.5deg); }
+    .beta-banner-inner { font-size: 0.65rem; }
+    .privacy-consent-modal { padding: 1.25rem 1.25rem 1rem; }
+}
