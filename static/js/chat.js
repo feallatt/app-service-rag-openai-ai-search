@@ -68,58 +68,182 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Decision tree configuration
     const decisionTree = {
-        layers: [
-            {
-                title: "Welcher Fahrradtyp?",
+        start: "usage",
+        nodes: {
+            usage: {
+                title: "Wie möchtest du dein neues Fahrrad nutzen?",
                 options: [
-                    { value: "stadtrad", label: "Stadtrad / City Bike" },
-                    { value: "mountainbike", label: "Mountainbike" },
-                    { value: "rennrad", label: "Rennrad" },
-                    { value: "ebike", label: "E-Bike" },
-                    { value: "tourenrad", label: "Tourenrad" }
+                    { value: "sport", label: "Sport/Freizeit", next: "terrain" },
+                    { value: "work", label: "Arbeitsweg", next: "work_route" },
+                    { value: "errands", label: "Besorgungen", next: "cargo_weight" }
                 ]
             },
-            {
-                title: "Wie ist dein Budget?",
+            terrain: {
+                title: "Wo fühlst du dich wohl?",
                 options: [
-                    { value: "unter-500", label: "Unter 500€" },
-                    { value: "500-1000", label: "500€ - 1.000€" },
-                    { value: "1000-2000", label: "1.000€ - 2.000€" },
-                    { value: "2000-3000", label: "2.000€ - 3.000€" },
-                    { value: "ueber-3000", label: "Über 3.000€" }
+                    { value: "forest", label: "Waldweg", next: "forest_type" },
+                    { value: "road", label: "Straße", next: "road_type" }
                 ]
             },
-            {
-                title: "Wie oft fährst du?",
+            forest_type: {
+                title: "Welche Art von Waldwegen fährst du?",
                 options: [
-                    { value: "gelegentlich", label: "Gelegentlich (1-2x pro Woche)" },
-                    { value: "regelmaessig", label: "Regelmäßig (3-5x pro Woche)" },
-                    { value: "taeglich", label: "Täglich" },
-                    { value: "wochenende", label: "Nur am Wochenende" },
-                    { value: "sport", label: "Für Sport/Training" }
+                    { value: "heavy", label: "Schweres Gelände, Bergab, Verwurzelt", next: "ebike_heavy" },
+                    { value: "light", label: "Leichteres Gelände, Freeride", next: "ebike_light" },
+                    { value: "gravel", label: "Waldautobahn, Schotterpisten, Wald und Wiesenwege", next: "ebike_gravel_forest" }
                 ]
             },
-            {
-                title: "Welche Strecken fährst du hauptsächlich?",
+            ebike_heavy: {
+                title: "E-Bike?",
                 options: [
-                    { value: "stadt", label: "Stadt / Asphalt" },
-                    { value: "wald", label: "Wald- und Feldwege" },
-                    { value: "berge", label: "Hügel und Berge" },
-                    { value: "gemischt", label: "Gemischt" },
-                    { value: "langstrecke", label: "Lange Touren" }
+                    { value: "yes", label: "Ja", result: true },
+                    { value: "no", label: "Nein", result: true }
                 ]
             },
-            {
-                title: "Was ist dir am wichtigsten?",
+            ebike_light: {
+                title: "E-Bike?",
                 options: [
-                    { value: "komfort", label: "Komfort" },
-                    { value: "geschwindigkeit", label: "Geschwindigkeit" },
-                    { value: "robustheit", label: "Robustheit" },
-                    { value: "gewicht", label: "Geringes Gewicht" },
-                    { value: "preis", label: "Gutes Preis-Leistungs-Verhältnis" }
+                    { value: "yes", label: "Ja", result: true },
+                    { value: "no", label: "Nein", result: true }
+                ]
+            },
+            ebike_gravel_forest: {
+                title: "E-Bike?",
+                options: [
+                    { value: "yes", label: "Ja", result: true },
+                    { value: "no", label: "Nein", result: true }
+                ]
+            },
+            road_type: {
+                title: "Wie würden deine Touren aussehen?",
+                options: [
+                    { value: "gravel", label: "Gravel (Grund Hype)", next: "ebike_gravel" },
+                    { value: "crossrace", label: "Straße/Schotter (Crossrace)", next: "ebike_crossrace" },
+                    { value: "racing", label: "Schnell auf Strecke (Rennrad)", next: "racing_position" }
+                ]
+            },
+            ebike_gravel: {
+                title: "E-Bike?",
+                options: [
+                    { value: "yes", label: "Ja", result: true },
+                    { value: "no", label: "Nein", result: true }
+                ]
+            },
+            ebike_crossrace: {
+                title: "E-Bike?",
+                options: [
+                    { value: "yes", label: "Ja", result: true },
+                    { value: "no", label: "Nein", result: true }
+                ]
+            },
+            racing_position: {
+                title: "Wie möchtest du auf dem Fahrrad sitzen?",
+                options: [
+                    { value: "sporty", label: "Sportlich sitzend", result: true },
+                    { value: "upright", label: "Aufrechter sitzend", result: true }
+                ]
+            },
+            work_route: {
+                title: "Wie sieht dein Arbeitsweg aus?",
+                options: [
+                    { value: "city", label: "Durch die Stadt", next: "city_position" },
+                    { value: "countryside", label: "Über Land", next: "countryside_position" }
+                ]
+            },
+            city_position: {
+                title: "Wie möchtest du auf dem Fahrrad sitzen?",
+                options: [
+                    { value: "upright", label: "Aufrecht sitzend", next: "ebike_city_upright" },
+                    { value: "medium", label: "Mittelaufrecht", next: "ebike_city_medium" },
+                    { value: "sporty", label: "Sportlich sitzend", next: "ebike_city_sporty" }
+                ]
+            },
+            ebike_city_upright: {
+                title: "E-Bike?",
+                options: [
+                    { value: "yes", label: "Ja", result: true },
+                    { value: "no", label: "Nein", result: true }
+                ]
+            },
+            ebike_city_medium: {
+                title: "E-Bike?",
+                options: [
+                    { value: "yes", label: "Ja", result: true },
+                    { value: "no", label: "Nein", result: true }
+                ]
+            },
+            ebike_city_sporty: {
+                title: "E-Bike?",
+                options: [
+                    { value: "yes", label: "Ja", result: true },
+                    { value: "no", label: "Nein", result: true }
+                ]
+            },
+            countryside_position: {
+                title: "Wie möchtest du auf dem Fahrrad sitzen?",
+                options: [
+                    { value: "medium", label: "Mittelaufrecht", next: "ebike_countryside_medium" },
+                    { value: "sporty", label: "Sportlich sitzend", next: "ebike_countryside_sporty" }
+                ]
+            },
+            ebike_countryside_medium: {
+                title: "E-Bike?",
+                options: [
+                    { value: "yes", label: "Ja", result: true },
+                    { value: "no", label: "Nein", result: true }
+                ]
+            },
+            ebike_countryside_sporty: {
+                title: "E-Bike?",
+                options: [
+                    { value: "yes", label: "Ja", result: true },
+                    { value: "no", label: "Nein", result: true }
+                ]
+            },
+            cargo_weight: {
+                title: "Wie groß ist dein durchschnittliches Transportgewicht?",
+                options: [
+                    { value: "light", label: "Bis 25kg (City, urban, Trekking)", next: "cargo_light_position" },
+                    { value: "heavy", label: "Ab 25 kg (Lastenrad)", next: "cargo_type" }
+                ]
+            },
+            cargo_light_position: {
+                title: "Wie möchtest du auf deinem Fahrrad sitzen?",
+                options: [
+                    { value: "upright", label: "Aufrecht sitzend", next: "ebike_cargo_upright" },
+                    { value: "medium", label: "Mittelaufrecht", next: "ebike_cargo_medium" },
+                    { value: "sporty", label: "Sportlich sitzend", next: "ebike_cargo_sporty" }
+                ]
+            },
+            ebike_cargo_upright: {
+                title: "E-Bike?",
+                options: [
+                    { value: "yes", label: "Ja", result: true },
+                    { value: "no", label: "Nein", result: true }
+                ]
+            },
+            ebike_cargo_medium: {
+                title: "E-Bike?",
+                options: [
+                    { value: "yes", label: "Ja", result: true },
+                    { value: "no", label: "Nein", result: true }
+                ]
+            },
+            ebike_cargo_sporty: {
+                title: "E-Bike?",
+                options: [
+                    { value: "yes", label: "Ja", result: true },
+                    { value: "no", label: "Nein", result: true }
+                ]
+            },
+            cargo_type: {
+                title: "Was möchtest du transportieren?",
+                options: [
+                    { value: "children", label: "Kinder", result: true },
+                    { value: "other", label: "Sonstiges", result: true }
                 ]
             }
-        ]
+        }
     };
     
     // Initialize empty chat
@@ -398,8 +522,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Initialize decision tree state
         const state = {
-            currentLayer: 0,
+            currentNode: decisionTree.start,
             selections: [],
+            nodeHistory: [],
             modal: overlay,
             progressBar: overlay.querySelector('.progress-bar'),
             stepIndicator: overlay.querySelector('.current-step'),
@@ -411,8 +536,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Set up event handlers
         setupDecisionTreeHandlers(state);
 
-        // Show first layer
-        showDecisionTreeLayer(state);
+        // Show first node
+        showDecisionTreeNode(state);
     }
 
     function setupDecisionTreeHandlers(state) {
@@ -439,31 +564,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Back button
         state.backButton.addEventListener('click', () => {
-            if (state.currentLayer > 0) {
-                state.currentLayer--;
+            if (state.nodeHistory.length > 0) {
+                state.currentNode = state.nodeHistory.pop();
                 state.selections.pop();
-                showDecisionTreeLayer(state);
+                showDecisionTreeNode(state);
             }
         });
     }
 
-    function showDecisionTreeLayer(state) {
-        const layer = decisionTree.layers[state.currentLayer];
+    function showDecisionTreeNode(state) {
+        const node = decisionTree.nodes[state.currentNode];
         
-        // Update progress - calculate so that 100% is only reached after completion
-        // Show progress based on questions answered, not current question
-        const progress = (state.currentLayer / decisionTree.layers.length) * 100;
+        // Update progress based on steps taken (linear progression)
+        // Estimate average path length and calculate progress accordingly
+        const estimatedTotalSteps = 5; // Most paths have about 4-5 questions
+        const currentStep = state.selections.length + 1;
+        const progress = Math.min((state.selections.length / estimatedTotalSteps) * 100, 90);
         state.progressBar.style.width = progress + '%';
-        state.progressBar.setAttribute('aria-valuenow', state.currentLayer);
-        state.stepIndicator.textContent = state.currentLayer + 1;
+        state.progressBar.setAttribute('aria-valuenow', currentStep);
+        state.stepIndicator.textContent = currentStep;
 
         // Update question
-        state.questionElement.textContent = layer.title;
+        state.questionElement.textContent = node.title;
 
         // Clear and populate options
         state.optionsElement.innerHTML = '';
         
-        layer.options.forEach(option => {
+        node.options.forEach(option => {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'btn me-2 mb-3';
@@ -506,32 +633,39 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         // Show/hide back button
-        state.backButton.style.display = state.currentLayer > 0 ? 'inline-block' : 'none';
+        state.backButton.style.display = state.nodeHistory.length > 0 ? 'inline-block' : 'none';
     }
 
     function selectDecisionTreeOption(state, option) {
+        const currentNode = decisionTree.nodes[state.currentNode];
+        
         // Store the selection
         state.selections.push({
-            layer: state.currentLayer,
-            question: decisionTree.layers[state.currentLayer].title,
+            node: state.currentNode,
+            question: currentNode.title,
             value: option.value,
             label: option.label
         });
 
-        // Move to next layer or finish
-        if (state.currentLayer < decisionTree.layers.length - 1) {
-            state.currentLayer++;
-            showDecisionTreeLayer(state);
-        } else {
-            // All layers completed, send the message
+        // Check if this option has a result (end of tree) or leads to next node
+        if (option.result) {
+            // This is a final result
             completeDecisionTree(state);
+        } else if (option.next) {
+            // Move to next node
+            state.nodeHistory.push(state.currentNode);
+            state.currentNode = option.next;
+            showDecisionTreeNode(state);
+        } else {
+            // This shouldn't happen with the new tree structure
+            console.error('Option has neither result nor next node:', option);
         }
     }
 
     function completeDecisionTree(state) {
         // Show completion: set progress to 100%
         state.progressBar.style.width = '100%';
-        state.progressBar.setAttribute('aria-valuenow', 5);
+        state.progressBar.setAttribute('aria-valuenow', state.selections.length + 1);
         
         // Build the message from selections
         let prompt = "Ich suche ein Fahrrad basierend auf folgenden Kriterien:\n\n";

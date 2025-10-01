@@ -189,7 +189,7 @@ class RagChatService:
             # enhance the system prompt for the first user message
             is_first_prompt = not any(msg.role == "assistant" for msg in normalized_history)
             if is_first_prompt:
-                additional_system_prompt = "5 wichtige Fragen für einen Fahrradverkäufer: 1. Geschlecht, 2. Untergrund auf dem gefahren werden soll, 3. Budget, 4. Verwendungszweck, 5. Körpergröße des Fahrers\n\n"
+                additional_system_prompt = "Die wichtigesten Punkte bei der Entscheidungsfindung sind: Nutzen (Sport/Freizeit, Arbeitsweg, Besorgungen), Untergrund (Stadt, Asphalt, Schotter, Waldwege, schweres Gelände), Rahmenform (e.g. Dame ), Budget , eBike Ja/Nein\n\n"
                 additional_system_prompt += "Antworte immer in Deutsch.\n\n"
                 additional_system_prompt += "Schlage keine Fahrräder vor, wenn du noch nichts über den Benutzer weißt.\n\n"
                 additional_system_prompt += "WICHTIG: Durchsuche ALLE verfügbaren Dokumente gründlich, bevor du sagst, dass ein bestimmter Fahrradtyp nicht verfügbar ist. Achte auf verschiedene Bezeichnungen und Beschreibungen für den gleichen Fahrradtyp.\n\n"
@@ -214,6 +214,7 @@ class RagChatService:
             enhanced_system_prompt += "- Sei konsistent - wenn CUBE einen Fahrradtyp anbietet, sage das direkt\n"
             enhanced_system_prompt += "- Nutze immer die verfügbaren Dokumente als Quelle für deine Empfehlungen\n"
             enhanced_system_prompt += "- Bei unklaren Anfragen, frage nach den wichtigen Kriterien (Budget, Einsatzbereich, etc.)\n"
+            enhanced_system_prompt += "- Sortiere die Ergebnisse immer nach Preis absteigend\n"
             
             messages.append({
                 "role": "system",
@@ -250,7 +251,7 @@ class RagChatService:
                     # Increase top_n_documents for better retrieval coverage of all bike types
                     "top_n_documents": 5,
                     # Use moderate strictness for good balance between accuracy and coverage
-                    "strictness": 2
+                    "strictness": 3
                 }
             }
             
@@ -273,7 +274,7 @@ class RagChatService:
                     "data_sources": [data_source]
                 },
                 stream=False,
-                temperature=0.3,  # Lower temperature for more consistent responses
+                temperature=0.2,  # Lower temperature for more consistent responses
                 max_tokens=1500   # Reasonable limit for responses
             )
             logger.info(f"OpenAI response: {response}")

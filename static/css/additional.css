@@ -33,12 +33,74 @@
 
 /* Kompaktere Nachrichten: kleinere Zeilenabstände */
 .message-content {
-    line-height: 1.3 !important;
+    line-height: 1.2 !important;
 }
 
 .message-content br + br {
     /* Doppelte Zeilunumbrüche (Absätze) weniger Abstand */
     line-height: 0.8;
+}
+
+/* Kompaktere Chat-Nachrichten - reduziere Standard Bootstrap mb-4 */
+.d-flex.mb-4 {
+    margin-bottom: 1rem !important; /* Anstatt Bootstrap's mb-4 (1.5rem) */
+}
+
+/* Kompaktere Überschriften in Nachrichten */
+.message-content h1,
+.message-content h2,
+.message-content h3,
+.message-content h4,
+.message-content h5,
+.message-content h6 {
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.3rem !important;
+    line-height: 1.2 !important;
+}
+
+/* Kompaktere Absätze in Nachrichten */
+.message-content p {
+    margin-bottom: 0.3rem !important;
+}
+
+/* Kompaktere Listen */
+.message-content ul,
+.message-content ol {
+    margin-bottom: 0.2rem !important;
+    margin-top: 0.2rem !important;
+    padding-left: 1.2rem !important;
+}
+
+.message-content li {
+    margin-bottom: 0.05rem !important;
+    line-height: 1.1 !important;
+}
+
+/* Sehr kompakte Abstände für alle Bullet Points und Text */
+.message-content p {
+    margin-top: 0.05rem !important;
+    margin-bottom: 0.05rem !important;
+    line-height: 1.1 !important;
+}
+
+/* Etwas mehr Abstand nur vor nummerierten Hauptpunkten (1., 2., etc.) */
+.message-content p:nth-child(n+2) {
+    margin-top: 0.4rem !important;
+}
+
+/* Reduziere Abstände zwischen aufeinanderfolgenden Absätzen mit Bullet Points */
+.message-content p:not(:first-child) {
+    margin-top: 0.02rem !important;
+}
+
+/* Kompaktere Darstellung für direkt aufeinanderfolgende Zeilen */
+.message-content br {
+    line-height: 0.1 !important;
+}
+
+/* Spezielle Regel für leere Zeilen zwischen Produkten entfernen */
+.message-content p:empty {
+    display: none !important;
 }
 
 /* Beta Banner (Post-It Style) */
