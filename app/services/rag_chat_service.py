@@ -6,6 +6,9 @@ Azure OpenAI with Azure AI Search. RAG enhances LLM responses by grounding them 
 your enterprise data stored in Azure AI Search.
 """
 import asyncio
+import re
+import json
+import os
 import logging
 from typing import List
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
@@ -38,6 +41,8 @@ class RagChatService:
         self.search_url = settings.azure_search_service_url
         self.search_index_name = settings.azure_search_index_name
         self.system_prompt = settings.system_prompt
+        self._load_suggestions()
+
         
         # Create Azure credentials for managed identity
         # This allows secure, passwordless authentication to Azure services
@@ -136,6 +141,84 @@ class RagChatService:
             normalized = normalized.replace(original, standardized)
         
         return normalized
+    
+    def _normalize_text(self, s: str) -> str:
+        if not s:
+            return ""
+        s = s.lower()
+        s = re.sub(r'[^\w\s]', ' ', s)          # remove punctuation
+        s = re.sub(r'\s+', ' ', s).strip()      # collapse whitespace
+        return s
+
+    def _load_suggestions(self):
+        try:
+            base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+            path = os.path.join(base, 'data', 'suggestions.json')
+            with open(path, 'r', encoding='utf-8') as f:
+                self.suggestions = json.load(f)
+            # build normalized index for fast matching
+            self._suggestions_index = []
+            for entry in self.suggestions:
+                norm_search = self._normalize_text(entry.get('searchText', ''))
+                norm_id = self._normalize_text(entry.get('id', ''))
+                self._suggestions_index.append({
+                    'entry': entry,
+                    'norm_search': norm_search,
+                    'norm_id': norm_id
+                })
+            logger.info("Loaded %d suggestion entries", len(self.suggestions))
+        except Exception as ex:
+            logger.exception("Failed to load suggestions.json: %s", ex)
+            self.suggestions = []
+            self._suggestions_index = []
+    
+    def _find_suggestion_by_prompt(self, prompt: str):
+        """
+        Try to find a matching suggestion for a constructed prompt.
+        Matching strategy:
+          1) exact normalized match on searchText
+          2) substring normalized match (prompt contains suggestion or vice versa)
+        Returns suggestion entry or None.
+        """
+        if not prompt:
+            return None
+        norm = self._normalize_text(prompt)
+        # exact
+        for item in self._suggestions_index:
+            if item['norm_search'] == norm or item['norm_id'] == norm:
+                return item['entry']
+        # substring
+        for item in self._suggestions_index:
+            if norm in item['norm_search'] or item['norm_search'] in norm:
+                return item['entry']
+        return None
+    
+    def _apply_suggestion_lookup(self, messages: list) -> list:
+        """
+        Inspect recent user message(s). If a guided-selection prompt is present,
+        replace it with the canonical searchText from suggestions.json so the
+        RAG call always uses the standardized query.
+        """
+        if not messages or not isinstance(messages, list):
+            return messages
+        # look for last user message that looks like the guided-selection prompt
+        for i in range(len(messages)-1, -1, -1):
+            msg = messages[i]
+            if msg.get('role') == 'user' and isinstance(msg.get('content'), str):
+                content = msg['content'].strip()
+                if content.startswith("ich suche ein fahrrad basierend auf folgenden kriterien"):
+                    suggestion = self._find_suggestion_by_prompt(content)
+                    if suggestion:
+                        logger.info("Applying suggestions.json canonical searchText for guided-selection (id=%s)", suggestion.get('id'))
+                        suggested_models = suggestion.get('recommendations', content)
+                        # replace content with canonical searchText
+                        logger.info(f"Suggested models: {suggested_models}")
+                        messages.insert(i + 1, {"role": "system", "content": f"models suggested: {suggested_models}"})
+                    else:
+                        logger.info("No suggestion match found for guided-selection; using original prompt")
+                    break
+        return messages
+
 
     async def get_chat_completion(self, history: List[ChatMessage]):
         """
@@ -215,7 +298,9 @@ class RagChatService:
             enhanced_system_prompt += "- Nutze immer die verfügbaren Dokumente als Quelle für deine Empfehlungen\n"
             enhanced_system_prompt += "- Bei unklaren Anfragen, frage nach den wichtigen Kriterien (Budget, Einsatzbereich, etc.)\n"
             enhanced_system_prompt += "- Sortiere die Ergebnisse immer nach Preis absteigend\n"
-            
+            enhanced_system_prompt += "- Wenn es suggested Models gibt, zeige immer alle an, nicht nur eines"
+            enhanced_system_prompt += "- Generell gilt: biete einige Auswahl wenn möglich und zeige wenn ein Modell passt immer verschiedene Ausstattungsvarianten an."
+
             messages.append({
                 "role": "system",
                 "content": enhanced_system_prompt
@@ -227,6 +312,9 @@ class RagChatService:
                     "role": msg.role,
                     "content": msg.content
                 })
+
+            # check for a match in the suggestions.json 
+            messages = self._apply_suggestion_lookup(messages)
             
             # Configure Azure AI Search data source with optimized parameters for better retrieval
             # This connects Azure OpenAI directly to your search index without needing to
@@ -249,7 +337,7 @@ class RagChatService:
                         "deployment_name": self.embedding_deployment
                     },
                     # Increase top_n_documents for better retrieval coverage of all bike types
-                    "top_n_documents": 5,
+                    "top_n_documents": 7,
                     # Use moderate strictness for good balance between accuracy and coverage
                     "strictness": 3
                 }
@@ -284,7 +372,7 @@ class RagChatService:
                 citations = response.choices[0].message.context.get('citations', [])
                 logger.info(f"Retrieved {len(citations)} citations")
                 # Log first few citation titles for debugging
-                for i, citation in enumerate(citations[:3]):
+                for i, citation in enumerate(citations[:7]):
                     logger.info(f"Citation {i+1}: {citation.get('title', 'No title')}")
 
             # SECURITY: Check response for system prompt leakage before returning
