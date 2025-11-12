@@ -93,6 +93,174 @@ def create_text_documents_from_df(df):
     
     return text_documents
 
+import numpy as np
+import pandas as pd
+
+def generate_bike_stats_text(df: pd.DataFrame, out_path: str = "data/bike_stats.txt") -> str:
+    """
+    Erstellt Statistik-Report für das Bike-DataFrame und schreibt ihn als Textdatei.
+    Nutzt 'Produktklasse' für E-Bike-Erkennung, nimmt 'UVP DE' direkt als Zahl
+    und ergänzt Fahrräder mit höchstem Fahrergewicht.
+    """
+
+    # ----------------- Hilfsfunktionen -----------------
+    def _is_empty(x):
+        if x is None:
+            return True
+        if isinstance(x, str):
+            return len(x.strip()) == 0 or x.strip().lower() == "nan"
+        if isinstance(x, (list, tuple, set, dict)):
+            return len(x) == 0
+        try:
+            return pd.isna(x)
+        except Exception:
+            return False
+
+    def _fmt_eur(x):
+        return f"{float(x):,.2f} EUR".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    def _dedup(strings):
+        seen = set()
+        out = []
+        for s in strings:
+            s = str(s).strip()
+            if s and s.lower() not in seen:
+                seen.add(s.lower())
+                out.append(s)
+        return out
+
+    # ----------------- Vorbereitung -----------------
+    total = len(df)
+    # einfache E-Bike-Erkennung
+    is_ebike = df["Produktklasse"].astype(str).str.lower().str.contains("e-bike")
+    ebikes = int(is_ebike.sum())
+
+    prices = df["UVP DE"].astype(float)
+    price_ok = prices.notna().any()
+
+    price_min, price_max, price_mean, price_median = None, None, None, None
+    if price_ok:
+        price_min = float(prices.min())
+        price_max = float(prices.max())
+        price_mean = float(prices.mean())
+        price_median = float(prices.median())
+
+    idx_min = prices.idxmin() if price_ok else None
+    idx_max = prices.idxmax() if price_ok else None
+
+    def pick_row(i):
+        if i is None or i not in df.index:
+            return None
+        return {
+            "artikel": df.at[i, "Artikel"] if "Artikel" in df.columns else None,
+            "beschreibung": df.at[i, "Beschreibung"] if "Beschreibung" in df.columns else None,
+            "preis": df.at[i, "UVP DE"],
+        }
+
+    cheapest = pick_row(idx_min)
+    most_expensive = pick_row(idx_max)
+
+    # Kategorien zählen
+    cat_counts = (
+        df["Produktklasse"].astype(str).str.strip().value_counts().to_dict()
+        if "Produktklasse" in df.columns
+        else {}
+    )
+
+    # unterschiedliche Modelle
+    distinct_models = df["Artikel"].nunique() if "Artikel" in df.columns else None
+
+    # Preisbuckets + Modelle
+    bins = [-np.inf,1000,2000,3000,4000,5000,6000,7000,np.inf]
+    labels = ['<1k','1k-2k','2k-3k','3k-4k','4k-5k','5k-6k','6k-7k','>7k']
+    human_label = {
+        '<1k': 'Unter 1.000 EUR','1k-2k':'1.000 - 2.000 EUR','2k-3k':'2.000 - 3.000 EUR',
+        '3k-4k':'3.000 - 4.000 EUR','4k-5k':'4.000 - 5.000 EUR','5k-6k':'5.000 - 6.000 EUR',
+        '6k-7k':'6.000 - 7.000 EUR','>7k':'Über 7.000 EUR'
+    }
+    bucket = pd.cut(prices, bins=bins, labels=labels)
+
+    # Farben
+    colors = []
+    for i, color in enumerate(df.Farbe):
+        if isinstance(color, list):
+            colors = colors + color
+        else:
+            colors.append(color)
+
+    colors = set(colors)
+    colors
+                
+    color_count = len(colors)
+
+    # Fahrräder mit höchstem Fahrergewicht
+    max_weight_bikes = []
+    if "FahrergewichtMax" in df.columns:
+        # Convert to string first to ensure we can apply string operations
+        fw_str = df["FahrergewichtMax"].astype(str)
+        
+        # Extract numeric part (remove "kg" and strip spaces)
+        fw = fw_str.str.replace("kg", "").str.strip().astype(float)
+        
+        if fw.notna().any():
+            max_fw = fw.max()
+            max_idxs = fw[fw == max_fw].index
+            for i in max_idxs:
+                name = df.at[i, "Artikel"]
+                max_weight_bikes.append((name, max_fw))
+
+    # ----------------- Text aufbauen -----------------
+    lines = []
+    lines.append(f"Gesamtanzahl Fahrräder: {total}")
+    lines.append(f"Anzahl E-Bikes: {ebikes}")
+    if cat_counts:
+        lines.append("Fahrräder pro Kategorie:")
+        for k, v in cat_counts.items():
+            lines.append(f"  - {k}: {v}")
+    if distinct_models is not None:
+        lines.append(f"Anzahl unterschiedlicher Modelle: {distinct_models}")
+    if most_expensive:
+        lines.append(
+            f"Teuerstes Fahrrad: {most_expensive['artikel']} - {_fmt_eur(most_expensive['preis'])}"
+        )
+    if cheapest:
+        lines.append(
+            f"Günstigstes Fahrrad: {cheapest['artikel']} - {_fmt_eur(cheapest['preis'])}"
+        )
+    if price_mean is not None:
+        lines.append(f"Durchschnittlicher Preis: {_fmt_eur(price_mean)}")
+    if price_median is not None:
+        lines.append(f"Median Preis: {_fmt_eur(price_median)}")
+
+    # Preisverteilung mit Modellen
+    lines.append("Preisverteilung (UVP DE):")
+    for lab in labels:
+        mask = bucket == lab
+        subset = df[mask]
+        lines.append(f"{human_label[lab]} ({len(subset)} Fahrräder):")
+        for _, r in subset.sort_values("UVP DE").iterrows():
+            art = r["Artikel"]
+            lines.append(f"  - {art} - {_fmt_eur(r['UVP DE'])}")
+
+    # Farben
+    lines.append(f"Anzahl unterschiedlicher Farben: {color_count}")
+    if color_count:
+        lines.append("Verfügbare Farben:")
+        lines.append("  - " + ", ".join(colors))
+
+    # Fahrergewicht
+    if max_weight_bikes:
+        lines.append(f"Fahrräder mit höchstem Fahrergewicht ({max_weight_bikes[0][1]} kg):")
+        for name, w in max_weight_bikes:
+            lines.append(f"  - {name} - {w} kg")
+
+    # Datei schreiben
+    text = "\n".join(lines)
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(text)
+
+    return out_path
+
 
 ### insert your path here ###
 stammdaten_path = '/Users/Q607721/Downloads/2026_Bike_Stammdaten_02.09.2026.xlsx'
@@ -126,7 +294,8 @@ grouped['Ständer'] = grouped['Ständer'].apply(lambda x: 'Ja' if not
 grouped['Gepäckträger'] = grouped['Gepäckträger'].apply(lambda x: 'Ja' if not 
                                               pd.isna(x) else 'Nein')
 
-
+grouped['Artikel'] = grouped['Artikel_base']
+grouped.drop(columns=['Artikel_base'], inplace=True)
 
 
 # Create text documents from the DataFrame
@@ -165,3 +334,7 @@ for i, doc in enumerate(bike_documents):
         f.write(doc)
 
 print(f"Created {len(bike_documents)} individual text files in: {output_dir}")
+
+generate_bike_stats_text(grouped)
+
+

@@ -105,7 +105,15 @@
 
 /* Beta Banner (Post-It Style) */
 /* Vollbreiter Beta Banner */
-.beta-top-banner { background: linear-gradient(90deg,#fffbe6,#ffe063,#ffcf2b); border-bottom:1px solid #d4b12a; font-size:.8rem; line-height:1.2rem; color:#473a05; box-shadow:0 2px 4px rgba(0,0,0,0.08); z-index:1040; }
+.beta-top-banner { 
+    background: linear-gradient(90deg, rgb(136, 160, 152), rgb(100,135,125), rgb(80,115,105)); 
+    border-bottom: 1px solid rgb(70,100,90); 
+    font-size: .8rem; 
+    line-height: 1.2rem; 
+    color: #ffffff; 
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08); 
+    z-index: 1040; 
+}
 .beta-top-banner strong { font-family:'Bebas Neue',sans-serif; letter-spacing:1px; font-size:.9rem; color:#2d2500; }
 .beta-top-banner .container-fluid { max-width:1400px; }
 
